@@ -83,6 +83,7 @@ async def list_commandes(
     commandes = db.query(Commande).filter(Commande.depot_id == current_user.depot_id).all()
     return commandes
 
+
 @router.post("/", response_model=CommandeResponse)
 async def create_commande(
     commande_data: CommandeCreate,
@@ -127,3 +128,5 @@ async def update_commande(
     db.commit()
     db.refresh(commande)
     return commande
+
+

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import Landing from "./pages/Landing"
 import Login from "./pages/Login"
 import AdminDashboard from "./pages/AdminDashboard"
 import ManagerDashboard from "./pages/ManagerDashboard"
@@ -21,7 +22,6 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is logged in (from localStorage)
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
       setUser(JSON.parse(storedUser))
@@ -36,16 +36,19 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/tracking" element={<ClientTracking />} />
+        <Route path="/tracking/:code" element={<ClientTracking />} />
 
+        {/* Protected routes */}
         {user ? (
           <>
             {user.role === "admin" && <Route path="/admin" element={<AdminDashboard user={user} />} />}
             {user.role === "gestionnaire" && <Route path="/manager" element={<ManagerDashboard user={user} />} />}
             {user.role === "livreur" && <Route path="/driver" element={<DriverDashboard user={user} />} />}
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 user.role === "admin" ? (
                   <Navigate to="/admin" />
@@ -54,14 +57,12 @@ function App() {
                 ) : user.role === "livreur" ? (
                   <Navigate to="/driver" />
                 ) : (
-                  <Navigate to="/tracking" />
+                  <Navigate to="/" />
                 )
               }
             />
           </>
-        ) : (
-          <Route path="/" element={<Navigate to="/login" />} />
-        )}
+        ) : null}
       </Routes>
     </Router>
   )

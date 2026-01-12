@@ -13,17 +13,17 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """Validate JWT token and return current user"""
-    token = credentials.credentials
-    payload = decode_token(token)
-    
+    print("TOKEN RECU >>>", credentials.credentials)
+    payload = decode_token(credentials.credentials)
+    print("PAYLOAD >>>", payload)
+
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
     
-    user_id = payload.get("sub")
+    user_id = payload.get("user_id")
     user = db.query(User).filter(User.id == user_id).first()
     
     if not user:

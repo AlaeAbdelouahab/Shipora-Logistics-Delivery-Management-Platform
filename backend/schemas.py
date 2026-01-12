@@ -27,7 +27,7 @@ class UserResponse(UserBase):
     date_creation: datetime
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # ============= DEPOT SCHEMAS =============
 class DepotBase(BaseModel):
@@ -45,7 +45,7 @@ class DepotResponse(DepotBase):
     date_creation: datetime
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # ============= COMMANDE SCHEMAS =============
 class CommandeBase(BaseModel):
@@ -72,7 +72,7 @@ class CommandeResponse(CommandeBase):
     date_creation: datetime
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # ============= LIVRAISON SCHEMAS =============
 class LivraisonBase(BaseModel):
@@ -94,7 +94,7 @@ class LivraisonResponse(LivraisonBase):
     ordre_visite: Optional[int]
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # ============= INCIDENT SCHEMAS =============
 class IncidentBase(BaseModel):
@@ -111,7 +111,7 @@ class IncidentResponse(IncidentBase):
     resolu: bool
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # ============= ITINERAIRE SCHEMAS =============
 class ItineraireResponse(BaseModel):
@@ -124,7 +124,7 @@ class ItineraireResponse(BaseModel):
     optimise: bool
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class LoginRequest(BaseModel):
     email: str

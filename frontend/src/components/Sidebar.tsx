@@ -24,7 +24,7 @@ export default function Sidebar({ role, activeTab, setActiveTab }: SidebarProps)
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <h2>Logistique</h2>
+        <h2>Shipora</h2>
       </div>
 
       <nav className="sidebar-nav">

@@ -16,7 +16,6 @@ export default function UserManagement({ user }: UserManagementProps) {
   const [nom, setNom] = useState("")
   const [prenom, setPrenom] = useState("")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [role, setRole] = useState("gestionnaire")
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
@@ -36,7 +35,6 @@ export default function UserManagement({ user }: UserManagementProps) {
           nom,
           prenom,
           email,
-          mot_de_passe: password,
           role,
           depot_id: user.depot_id,
         },
@@ -47,7 +45,6 @@ export default function UserManagement({ user }: UserManagementProps) {
       setNom("")
       setPrenom("")
       setEmail("")
-      setPassword("")
     } catch (err: any) {
       setMessage(`Erreur: ${err.response?.data?.detail || "Erreur inconnue"}`)
     } finally {
@@ -75,11 +72,6 @@ export default function UserManagement({ user }: UserManagementProps) {
         <div className="form-group">
           <label>Email</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-
-        <div className="form-group">
-          <label>Mot de passe</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
 
         <div className="form-group">
