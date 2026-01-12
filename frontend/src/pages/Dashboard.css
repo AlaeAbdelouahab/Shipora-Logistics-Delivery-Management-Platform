@@ -1,0 +1,59 @@
+.dashboard {
+  display: flex;
+  height: 100vh;
+  background-color: var(--gray-50);
+}
+
+.dashboard-content {
+  flex: 1;
+  overflow-y: auto;
+  margin-left: 250px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    margin-left: 0;
+  }
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: var(--gray-900);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-livree {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge-en_attente {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-en_transit {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-annulee {
+  background-color: #fee2e2;
+  color: #991b1b;
+}

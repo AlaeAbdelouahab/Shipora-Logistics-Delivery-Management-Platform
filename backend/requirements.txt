@@ -1,0 +1,17 @@
+fastapi==0.115.0
+uvicorn==0.30.0
+sqlalchemy==2.0.32
+psycopg[binary]>=3.2.0
+pydantic==2.9.0
+pydantic[email]==2.9.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.6
+python-dotenv==1.0.0
+pandas>=2.2.0
+openpyxl>=3.1.5
+geopy==2.4.0
+requests==2.32.0
+ortools>=9.11.0
+aiofiles==23.2.1

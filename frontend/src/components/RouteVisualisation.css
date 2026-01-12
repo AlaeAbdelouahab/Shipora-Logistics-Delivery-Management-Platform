@@ -1,0 +1,99 @@
+.route-visualization {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.route-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.route-tabs .tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  border: 2px solid var(--gray-200);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 12px;
+}
+
+.route-tabs .tab:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.route-tabs .tab.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
+.route-tabs .tab span {
+  font-weight: 600;
+}
+
+.route-tabs .tab small {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.route-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: var(--gray-50);
+  border-radius: 6px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-row .label {
+  font-size: 13px;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.detail-row .value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.map-container {
+  margin-bottom: 20px;
+}
+
+.commandes-list {
+  border-top: 1px solid var(--gray-200);
+  padding-top: 16px;
+}
+
+.commandes-list h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.commandes-list ol {
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--gray-700);
+}
+
+.commandes-list li {
+  margin-bottom: 6px;
+}

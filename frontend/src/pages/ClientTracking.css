@@ -1,0 +1,56 @@
+.tracking-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+}
+
+.tracking-card {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+}
+
+.tracking-card h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: var(--primary);
+}
+
+.tracking-card p {
+  color: var(--gray-600);
+  margin-bottom: 30px;
+}
+
+.tracking-info {
+  margin-top: 30px;
+  padding-top: 30px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.tracking-info h2 {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.info-item label {
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.info-item span {
+  color: var(--gray-600);
+}
