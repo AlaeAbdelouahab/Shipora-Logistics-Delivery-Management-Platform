@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -6,17 +7,30 @@ import os
 from database import init_db, engine, SessionLocal
 from routes import auth, users, commandes, livraisons, itineraires, reports, clients
 from dotenv import load_dotenv
+from scheduler import optimization_scheduler
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 
 # Lifespan event
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize database
+    # Startup: Initialize database and scheduler
+    logger.info("Starting application...")
     init_db()
+    optimization_scheduler.start()
+    logger.info("Route optimization scheduler initialized")
     yield
     # Shutdown
-    pass
+    logger.info("Shutting down application...")
+    optimization_scheduler.stop()
 
 # Initialize FastAPI app
 app = FastAPI(

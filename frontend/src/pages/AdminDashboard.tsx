@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import type { User } from "../App"
 import Sidebar from "../components/Sidebar"

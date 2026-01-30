@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useRef } from "react"
 import "leaflet/dist/leaflet.css"
 import L from "leaflet"
@@ -9,14 +7,22 @@ interface RoutePoint {
   lon: number
   label: string
   order?: number
-  color?: string
+}
+
+interface DepotPoint {
+  nom: string
+  lat: number
+  lon: number
 }
 
 interface MapComponentProps {
   center?: [number, number]
   zoom?: number
-  routes?: RoutePoint[]
+  points?: RoutePoint[]         // commandes
+  depot?: DepotPoint | null     // depot
   showRoute?: boolean
+  routeColor?: string           // couleur de l’itinéraire
+  depotColor?: string           // couleur unique du dépôt
 }
 
 // Fix for Leaflet default markers
@@ -31,19 +37,37 @@ const DefaultIcon = L.icon({
 })
 L.Marker.prototype.options.icon = DefaultIcon
 
+function coloredDivIcon(color: string) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width: 14px;
+      height: 14px;
+      background:${color};
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(0,0,0,.35);
+    "></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  })
+}
+
 export default function MapComponent({
-  center = [48.8566, 2.3522], // Paris
+  center = [48.8566, 2.3522],
   zoom = 10,
-  routes = [],
+  points = [],
+  depot = null,
   showRoute = false,
+  routeColor = "#3B82F6",
+  depotColor = "#F59E0B",
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null)
-  const markersRef = useRef<L.Marker[]>([])
+  const markersRef = useRef<L.Layer[]>([])
   const polylineRef = useRef<L.Polyline | null>(null)
 
   useEffect(() => {
     if (!mapRef.current) {
-      // Initialize map
       mapRef.current = L.map("map").setView(center, zoom)
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
@@ -51,54 +75,53 @@ export default function MapComponent({
       }).addTo(mapRef.current)
     }
 
-    // Clear existing markers
-    markersRef.current.forEach((marker) => marker.remove())
+    // clear
+    markersRef.current.forEach((layer) => (layer as any).remove())
     markersRef.current = []
-    if (polylineRef.current) {
-      polylineRef.current.remove()
+    if (polylineRef.current) polylineRef.current.remove()
+
+    const coordinates: [number, number][] = []
+
+    // ✅ depot marker (always first)
+    if (depot) {
+      const depotMarker = L.marker([depot.lat, depot.lon], {
+        title: depot.nom,
+        icon: coloredDivIcon(depotColor),
+      }).bindPopup(`<b>${depot.nom}</b>`)
+
+      depotMarker.addTo(mapRef.current!)
+      markersRef.current.push(depotMarker)
+      coordinates.push([depot.lat, depot.lon])
     }
 
-    // Add new markers
-    if (routes.length > 0) {
-      const coordinates: [number, number][] = []
+    // ✅ commandes markers
+    points.forEach((p) => {
+      const marker = L.marker([p.lat, p.lon], {
+        title: p.label,
+        icon: coloredDivIcon(routeColor),
+      }).bindPopup(`<b>${p.label}</b>${p.order ? `<div>Ordre: ${p.order}</div>` : ""}`)
 
-      routes.forEach((point, index) => {
-        const marker = L.marker([point.lat, point.lon], {
-          title: point.label,
-        })
+      marker.addTo(mapRef.current!)
+      markersRef.current.push(marker)
+      coordinates.push([p.lat, p.lon])
+    })
 
-        const color = point.color || "#3B82F6"
-        const popupContent = `
-          <div style="font-weight: bold;">${point.label}</div>
-          ${point.order ? `<div>Ordre: ${point.order}</div>` : ""}
-          <div>Lat: ${point.lat.toFixed(4)}</div>
-          <div>Lon: ${point.lon.toFixed(4)}</div>
-        `
-
-        marker.bindPopup(popupContent)
-        marker.addTo(mapRef.current!)
-        markersRef.current.push(marker)
-
-        coordinates.push([point.lat, point.lon])
-      })
-
-      // Draw route if requested
-      if (showRoute && coordinates.length > 1) {
-        polylineRef.current = L.polyline(coordinates, {
-          color: "#10B981",
-          weight: 3,
-          opacity: 0.7,
-          dashArray: "5, 5",
-        }).addTo(mapRef.current!)
-      }
-
-      // Fit bounds to all markers
-      if (markersRef.current.length > 0) {
-        const group = L.featureGroup(markersRef.current)
-        mapRef.current!.fitBounds(group.getBounds(), { padding: [50, 50] })
-      }
+    // ✅ continuous route line
+    if (showRoute && coordinates.length > 1) {
+      polylineRef.current = L.polyline(coordinates, {
+        color: routeColor,
+        weight: 4,
+        opacity: 0.85,
+        // no dashArray => continuous line
+      }).addTo(mapRef.current!)
     }
-  }, [routes, center, zoom, showRoute])
+
+    // fit bounds
+    if (markersRef.current.length) {
+      const group = L.featureGroup(markersRef.current as any)
+      mapRef.current!.fitBounds(group.getBounds(), { padding: [50, 50] })
+    }
+  }, [points, depot, center, zoom, showRoute, routeColor, depotColor])
 
   return (
     <div style={{ width: "100%", height: "400px", borderRadius: "8px", overflow: "hidden" }}>

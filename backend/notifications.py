@@ -79,5 +79,30 @@ class NotificationService:
         </html>
         """
 
+    def get_tracking_code_template(self, id_commande: str, tracking_code: str) -> str:
+        """Email template to send tracking code to the client"""
+        return f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Votre commande a été enregistrée ✅</h2>
+                <p>Bonjour,</p>
+                <p>Votre commande <strong>{id_commande}</strong> a bien été enregistrée dans notre système.</p>
+
+                <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>Code de tracking :</strong></p>
+                    <p style="font-size: 22px; letter-spacing: 2px; margin: 8px 0;">
+                        <strong>{tracking_code}</strong>
+                    </p>
+                </div>
+
+                <p>Utilisez ce code sur la page de suivi pour connaître l’état de votre livraison.</p>
+
+                <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                    Système de Gestion Logistique
+                </p>
+            </body>
+        </html>
+        """
+
 # Global notification service
 notification_service = NotificationService()

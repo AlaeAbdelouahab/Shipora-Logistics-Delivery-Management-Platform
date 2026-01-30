@@ -1,43 +1,58 @@
-"use client"
-
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import MapComponent from "./MapComponent"
-import type { User } from "../App"
-import "./RouteVisualization.css"
+import "./RouteVisualisation.css"
+
+interface RouteCommande {
+  commande_id: number
+  order: number
+  lat: number
+  lon: number
+}
 
 interface Route {
   driver_id: number
-  commandes: Array<{
-    commande_id: number
-    order: number
-    lat: number
-    lon: number
-  }>
+  commandes: RouteCommande[]
   distance_m: number
   time_s: number
   commandes_count: number
 }
 
-interface RouteVisualizationProps {
-  routes: Route[]
-  user: User
+interface DepotDTO {
+  nom: string
+  lat: number
+  lon: number
 }
 
-export default function RouteVisualization({ routes, user }: RouteVisualizationProps) {
-  const [selectedRoute, setSelectedRoute] = useState<number>(0)
+const PALETTE = ["#3B82F6", "#10B981", "#a30648", "#EF4444", "#8B5CF6", "#06B6D4"]
+const DEPOT_COLOR = "#F59E0B"
 
-  if (!routes || routes.length === 0) {
-    return <div className="card">Aucune route optimisée</div>
-  }
+function colorForDriver(driverId: number) {
+  return PALETTE[driverId % PALETTE.length]
+}
 
-  const currentRoute = routes[selectedRoute]
-  const mapPoints = currentRoute.commandes.map((c) => ({
-    lat: c.lat,
-    lon: c.lon,
-    label: `Commande ${c.commande_id}`,
-    order: c.order,
-    color: "#3B82F6",
-  }))
+export default function RouteVisualization({
+  routes,
+  depot,
+}: {
+  routes: Route[]
+  depot?: DepotDTO | null
+}) {
+  const [selectedRoute, setSelectedRoute] = useState(0)
+
+  const currentRoute = routes?.[selectedRoute]
+  const routeColor = useMemo(() => (currentRoute ? colorForDriver(currentRoute.driver_id) : "#3B82F6"), [currentRoute])
+
+  if (!routes?.length) return <div className="card">Aucune route à afficher</div>
+
+  const points = currentRoute.commandes
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((c) => ({
+      lat: c.lat,
+      lon: c.lon,
+      label: `Commande ${c.commande_id}`,
+      order: c.order,
+    }))
 
   return (
     <div className="route-visualization">
@@ -66,17 +81,24 @@ export default function RouteVisualization({ routes, user }: RouteVisualizationP
       </div>
 
       <div className="map-container">
-        <MapComponent routes={mapPoints} showRoute={true} />
+        <MapComponent
+          points={points}
+          depot={depot ?? null}
+          showRoute
+          routeColor={routeColor}
+          depotColor={DEPOT_COLOR}
+        />
       </div>
 
       <div className="commandes-list">
         <h3>Ordre de visite</h3>
         <ol>
           {currentRoute.commandes
+            .slice()
             .sort((a, b) => a.order - b.order)
             .map((commande) => (
               <li key={commande.commande_id}>
-                Commande {commande.commande_id} - Ordre {commande.order}
+                Commande {commande.commande_id} — Ordre {commande.order}
               </li>
             ))}
         </ol>

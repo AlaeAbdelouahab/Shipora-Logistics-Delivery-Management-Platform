@@ -1,4 +1,3 @@
-"use client"
 
 import type React from "react"
 
@@ -57,9 +56,9 @@ export default function CommandeImport({ user, onImportSuccess }: CommandeImport
       <form onSubmit={handleImport} style={{ maxWidth: "500px" }}>
         <div className="form-group">
           <label>Fichier Excel (colonnes: id_commande, adresse, poids)</label>
-          <input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
         </div>
-
+        <input type="file" accept=".xlsx, .xls" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
+        <br />
         <button type="submit" className="primary" disabled={loading || !file}>
           {loading ? "Import en cours..." : "Importer"}
         </button>

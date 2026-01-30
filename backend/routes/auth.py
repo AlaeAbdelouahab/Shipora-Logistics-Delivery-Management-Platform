@@ -92,26 +92,3 @@ async def register(user_data: UserBase, db: Session = Depends(get_db)):
         )
     return db_user
 
-
-# --- from email.mime.text import MIMEText
-#---      import aiosmtplib
-
-  #      subject = "Votre compte Shipora a été créé"
-   #     body = f"""
-    #    Bonjour {db_user.prenom},
-#
- #       Votre compte Shipora a été créé avec succès.
-#
- #       Voici vos informations de connexion temporaires :
-  #      Email: {db_user.email}
-   #     Mot de passe temporaire: {temp_password}
-#
- #       Veuillez vous connecter et changer votre mot de passe dès que possible.
-#
- #       Cordialement,
-  #      L'équipe Shipora
-   #     """
-#
- #       message = MIMEText(body)
-  #      message["Subject"] = subject
-   #     message["From"] = "<EMAIL>" 

@@ -1,210 +1,272 @@
+# routes/itineraires.py
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, Livraison, Commande, Itineraire, DeliveryStatus, UserRole, Depot
+from models import User, Commande, Itineraire, DeliveryStatus, UserRole, Depot
 from schemas import ItineraireResponse
 from dependencies import get_current_user, check_role
-from datetime import datetime, timedelta
-from optimization import RouteOptimizer
-import requests
+from datetime import datetime, timedelta, date as date_cls
+from typing import Any, Dict, List, Optional
 import json
-from notifications import notification_service
+from scheduler import optimization_scheduler
+
 
 router = APIRouter()
 
-# Placeholder for OSRM API
-OSRM_URL = "http://router.project-osrm.org"
+from optimization import RouteOptimizer
 
-def get_distance_matrix(coordinates: list) -> list:
-    """Get distance matrix from OSRM"""
-    # Format: lon,lat;lon,lat;...
-    coords_str = ";".join([f"{lon},{lat}" for lat, lon in coordinates])
-    url = f"{OSRM_URL}/table/v1/driving/{coords_str}"
-    
-    try:
-        response = requests.get(url, params={"annotations": "distance,duration"})
-        data = response.json()
-        if data.get("code") == "Ok":
-            return data.get("distances", [])
-    except Exception as e:
-        print(f"OSRM error: {e}")
-    
-    return None
-
-@router.post("/optimize")
-async def optimize_routes(
-    depot_id: int = Query(...),
-    date_planifiee: str = Query(...),
+@router.post("/debug-optimization")
+async def debug_optimization(
+    depot_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(check_role([UserRole.ADMIN, UserRole.GESTIONNAIRE]))
 ):
-    """Optimize routes for deliveries using OR-Tools"""
-    
-    # Verify depot ownership
-    if current_user.role == UserRole.GESTIONNAIRE and current_user.depot_id != depot_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    # Get depot
     depot = db.query(Depot).filter(Depot.id == depot_id).first()
     if not depot:
-        raise HTTPException(status_code=404, detail="Depot not found")
-    
-    # Get pending commandes for depot
+        return {"ok": False, "error": f"Depot {depot_id} not found"}
+
     commandes = db.query(Commande).filter(
-        Commande.depot_id == depot_id,
+        Commande.depot_id == depot.id,
         Commande.statut == DeliveryStatus.EN_ATTENTE
     ).all()
-    
-    if not commandes:
-        raise HTTPException(status_code=400, detail="No pending commandes")
-    
-    # Get available drivers
-    livreurs = db.query(User).filter(
-        User.depot_id == depot_id,
+
+    drivers = db.query(User).filter(
+        User.depot_id == depot.id,
         User.role == UserRole.LIVREUR,
         User.actif == True
     ).all()
-    
-    if not livreurs:
-        raise HTTPException(status_code=400, detail="No available drivers")
-    
-    try:
-        # Prepare data for optimizer
-        commandes_data = [
-            {
-                "id": c.id,
-                "latitude": c.latitude,
-                "longitude": c.longitude,
-                "poids": c.poids,
-                "service_time_minutes": 10
-            }
-            for c in commandes
-        ]
-        
-        drivers_data = [
-            {
-                "id": l.id,
-                "capacity_kg": 100  # Default capacity
-            }
-            for l in livreurs
-        ]
-        
-        # Run optimizer
-        optimizer = RouteOptimizer()
-        result = optimizer.optimize(
-            commandes=commandes_data,
-            drivers=drivers_data,
-            depot_coords=(depot.latitude, depot.longitude),
-            planning_date=date_planifiee
-        )
-        
-        if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
-        
-        # Save optimized routes to database
-        from datetime import datetime as dt
-        planning_dt = dt.fromisoformat(date_planifiee)
-        
-        for route in result["routes"]:
-            # Create itinerary record
-            itineraire = Itineraire(
-                date_planifiee=planning_dt,
-                depot_id=depot_id,
-                livreur_id=route["driver_id"],
-                distance_totale=route["distance_m"] / 1000,  # Convert to km
-                temps_total=route["time_s"],
-                commandes_count=route["commandes_count"],
-                optimise=True,
-                metadonnees=json.dumps(route)
-            )
-            db.add(itineraire)
-            
-            # Update livraisons with optimized sequence
-            for commande_info in route["commandes"]:
-                livraison = db.query(Livraison).join(Commande).filter(
-                    Commande.id == commande_info["commande_id"],
-                    Livraison.livreur_id == route["driver_id"]
-                ).first()
-                
-                if livraison:
-                    livraison.ordre_visite = commande_info["order"]
-                else:
-                    # Create new livraison if not exists
-                    commande = db.query(Commande).filter(
-                        Commande.id == commande_info["commande_id"]
-                    ).first()
-                    
-                    livraison = Livraison(
-                        commande_id=commande_info["commande_id"],
-                        livreur_id=route["driver_id"],
-                        date_planifiee=planning_dt,
-                        ordre_visite=commande_info["order"],
-                        statut=DeliveryStatus.PREPARATION
-                    )
-                    db.add(livraison)
-                    commande.statut = DeliveryStatus.PREPARATION
-        
-        db.commit()
-        
-        # After saving routes, send notifications
-        for route in result["routes"]:
-            driver = db.query(User).filter(User.id == route["driver_id"]).first()
-            if driver and driver.email:
-                subject = f"Nouvel itinéraire - {date_planifiee}"
-                html_content = notification_service.get_route_assigned_template(
-                    driver.prenom,
-                    route["commandes_count"],
-                    date_planifiee
-                )
-                await notification_service.send_email(driver.email, subject, html_content)
-        
-        return {
-            "success": True,
-            "routes": result["routes"],
-            "total_distance_km": result["total_distance_m"] / 1000,
-            "total_time_hours": result["total_time_s"] / 3600,
-            "total_vehicles_used": result["total_vehicles_used"],
-            "message": f"Routes optimized for {result['total_vehicles_used']} drivers"
-        }
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Optimization error: {str(e)}")
 
-@router.get("/", response_model=list[ItineraireResponse])
+    commandes_data = [
+        {
+            "id": c.id,
+            "latitude": c.latitude,
+            "longitude": c.longitude,
+            "poids": c.poids,
+            "service_time_minutes": 10,
+            "created_at": c.date_creation.isoformat()
+        }
+        for c in commandes
+    ]
+
+    drivers_data = [
+        {
+            "id": d.id,
+            "email": d.email,
+            "name": f"{d.prenom} {d.nom}",
+            "capacity_kg": 100
+        }
+        for d in drivers
+    ]
+
+    optimizer = RouteOptimizer()
+    result = optimizer.optimize(
+        commandes=commandes_data,
+        drivers=drivers_data,
+        depot_coords=(depot.latitude, depot.longitude),
+        planning_date=datetime.now().date().isoformat(),
+    )
+    total_poids = sum(float(c.poids or 0) for c in commandes)
+    total_capacity = len(drivers) * 100
+
+    return {
+        "ok": True,
+        "depot": {"id": depot.id, "nom": depot.nom, "lat": depot.latitude, "lon": depot.longitude},
+        "counts": {
+            "commandes_en_attente": len(commandes),
+            "drivers_actifs": len(drivers),
+        },
+        "debug_stats": {
+            "total_poids": total_poids,
+            "total_capacity_assumed": total_capacity,
+            "units_hint": "poids and capacity are assumed in KG here"
+        },
+        "optimizer_result": result,
+    }
+
+@router.post("/run-optimization-now")
+async def run_optimization_now():
+    try:
+        await optimization_scheduler.daily_optimization()
+        return {"ok": True, "message": "Optimization finished (check logs for details)"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+    
+def parse_date_filter(date_filter: str) -> datetime:
+    """Parse ISO date or datetime string into naive datetime."""
+    s = (date_filter or "").strip()
+    if not s:
+        raise ValueError("date_filter is required")
+
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+
+    try:
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(tz=None).replace(tzinfo=None)
+        return dt
+    except Exception:
+        d = date_cls.fromisoformat(s[:10])
+        return datetime(d.year, d.month, d.day)
+
+
+def operational_target_date(now: datetime) -> date_cls:
+    """
+    Fenêtre opérationnelle:
+    - si maintenant >= 21:00 -> target = demain
+    - sinon -> target = aujourd'hui
+    """
+    return (now + timedelta(days=1)).date() if now.hour >= 21 else now.date()
+
+
+@router.get("/")
 async def list_itineraires(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    date_filter: str = Query(None)
 ):
-    """List itineraires for depot (optionally filtered by date)"""
-    
-    query = db.query(Itineraire).filter(Itineraire.depot_id == current_user.depot_id)
-    
-    if date_filter:
-        from datetime import datetime as dt
-        date = dt.fromisoformat(date_filter)
-        query = query.filter(
-            Itineraire.date_planifiee >= date,
-            Itineraire.date_planifiee < dt(date.year, date.month, date.day) + timedelta(days=1)
-        )
-    
-    itineraires = query.all()
-    return itineraires
+    now = datetime.now()
+    target = operational_target_date(now)
+
+    start = datetime(target.year, target.month, target.day, 0, 0, 0)
+    end = start + timedelta(days=1)
+
+    itineraires = (
+        db.query(Itineraire)
+        .filter(Itineraire.depot_id == current_user.depot_id)
+        .filter(Itineraire.date_planifiee >= start, Itineraire.date_planifiee < end)
+        .all()
+    )
+
+    depots = (db.query(Depot).filter(Depot.id == current_user.depot_id).all())
+
+    routes: List[Dict[str, Any]] = []
+    itineraires_payload: List[Dict[str, Any]] = []
+
+    for it in itineraires:
+        meta = it.metadonnees or {}
+
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+
+        meta_commandes = meta.get("commandes") or []
+
+        commande_ids = [
+            c.get("commande_id") for c in meta_commandes
+            if isinstance(c, dict) and c.get("commande_id") is not None
+        ]
+
+        commandes_db: Dict[int, Commande] = {}
+        if commande_ids:
+            rows = db.query(Commande).filter(Commande.id.in_(commande_ids)).all()
+            commandes_db = {c.id: c for c in rows}
+
+        commandes_for_route: List[Dict[str, Any]] = []
+        for c in sorted(meta_commandes, key=lambda x: (x.get("order", 999999) if isinstance(x, dict) else 999999)):
+            if not isinstance(c, dict):
+                continue
+
+            cid = c.get("commande_id")
+            cdb = commandes_db.get(cid)
+
+            lat = cdb.latitude if (cdb and cdb.latitude is not None) else c.get("lat")
+            lon = cdb.longitude if (cdb and cdb.longitude is not None) else c.get("lon")
+
+            commandes_for_route.append({
+                "commande_id": cid,
+                "order": c.get("order"),
+                "lat": lat,
+                "lon": lon,
+
+                # extras (pour UI)
+                "id_commande": (cdb.id_commande if cdb else None),
+                "adresse": (cdb.adresse if cdb else None),
+                "statut": (cdb.statut.value if cdb and cdb.statut else None),
+                "poids": (cdb.poids if cdb else None),
+                "client_email": (cdb.client_email if cdb else None),
+                "code_tracking": (cdb.code_tracking if cdb else None),
+            })
+        
+
+        route_obj = {
+            "itineraire_id": it.id,
+            "driver_id": it.livreur_id,
+            "commandes": commandes_for_route,
+            "distance_m": int((it.distance_totale or 0) * 1000),  # km -> m
+            "time_s": int((it.temps_total or 0) * 60),            # minutes -> seconds
+            "commandes_count": it.commandes_count or len(commandes_for_route),
+            "date_planifiee": it.date_planifiee.isoformat() if it.date_planifiee else None,
+            "optimise": it.optimise,
+            "created_at": it.date_creation.isoformat() if it.date_creation else None,
+        }
+        routes.append(route_obj)
+
+        itineraires_payload.append({
+            "id": it.id,
+            "date_planifiee": it.date_planifiee.isoformat() if it.date_planifiee else None,
+            "depot_id": it.depot_id,
+            "livreur_id": it.livreur_id,
+            "distance_totale": it.distance_totale,
+            "temps_total": it.temps_total,
+            "commandes_count": it.commandes_count,
+            "optimise": it.optimise,
+            "date_creation": it.date_creation.isoformat() if it.date_creation else None,
+        })
+
+    return {
+        "target_day": target.isoformat(),
+        "window": {"start": start.isoformat(), "end": end.isoformat()},
+        "routes": routes,
+        "itineraires": itineraires_payload,
+        "depot": {
+            "id": depots[0].id,
+            "nom": depots[0].nom,
+            "adresse": depots[0].adresse,
+            "lat": depots[0].latitude,
+            "lon": depots[0].longitude,
+        } if depots else None,
+    }
+
+
+@router.get("/unscheduled", response_model=list)
+async def get_unscheduled_orders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(check_role([UserRole.ADMIN, UserRole.GESTIONNAIRE])),
+):
+    depot_id = current_user.depot_id if current_user.role == UserRole.GESTIONNAIRE else None
+
+    query = db.query(Commande).filter(Commande.statut == DeliveryStatus.EN_ATTENTE)
+    if depot_id:
+        query = query.filter(Commande.depot_id == depot_id)
+
+    unscheduled = query.all()
+
+    return [
+        {
+            "id": c.id,
+            "id_commande": c.id_commande,
+            "adresse": c.adresse,
+            "poids": c.poids,
+            "code_tracking": c.code_tracking,
+            "date_creation": c.date_creation.isoformat(),
+        }
+        for c in unscheduled
+    ]
+
 
 @router.get("/{itineraire_id}", response_model=ItineraireResponse)
 async def get_itineraire(
     itineraire_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """Get itineraire details"""
-    
     itineraire = db.query(Itineraire).filter(Itineraire.id == itineraire_id).first()
     if not itineraire:
         raise HTTPException(status_code=404, detail="Itineraire not found")
-    
+
     if itineraire.depot_id != current_user.depot_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     return itineraire

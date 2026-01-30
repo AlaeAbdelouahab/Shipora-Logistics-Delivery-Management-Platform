@@ -8,6 +8,7 @@ import pandas as pd
 import uuid
 from geopy.geocoders import Nominatim
 import io
+from notifications import notification_service
 
 router = APIRouter()
 
@@ -20,28 +21,26 @@ async def import_excel(
     current_user: User = Depends(get_current_user),
     _: None = Depends(check_role([UserRole.ADMIN, UserRole.GESTIONNAIRE]))
 ):
-    """Import commandes from Excel file"""
     try:
         contents = await file.read()
         df = pd.read_excel(io.BytesIO(contents))
-        
-        # Validate required columns
-        required_columns = ["id_commande", "adresse", "poids"]
+
+        required_columns = ["id_commande", "adresse", "poids", "client_email"]
         missing = [col for col in required_columns if col not in df.columns]
         if missing:
             raise HTTPException(status_code=400, detail=f"Missing columns: {missing}")
-        
+
         imported = 0
         errors = []
-        
+        emails_to_send = []  # (email, subject, html)
+
         for index, row in df.iterrows():
             try:
-                # Check if already exists
                 existing = db.query(Commande).filter(Commande.id_commande == row["id_commande"]).first()
                 if existing:
                     errors.append(f"Row {index}: Commande {row['id_commande']} already exists")
                     continue
-                
+
                 # Geocode address
                 try:
                     location = geolocator.geocode(row["adresse"], timeout=10)
@@ -52,8 +51,10 @@ async def import_excel(
                 except Exception as e:
                     errors.append(f"Row {index}: Geocoding error: {str(e)}")
                     continue
-                
-                # Create commande
+
+                tracking_code = str(uuid.uuid4())[:8].upper()
+                client_email = str(row["client_email"]).strip() if row["client_email"] else ""
+
                 commande = Commande(
                     id_commande=str(row["id_commande"]),
                     adresse=row["adresse"],
@@ -61,18 +62,39 @@ async def import_excel(
                     longitude=longitude,
                     poids=float(row["poids"]),
                     depot_id=current_user.depot_id,
-                    code_tracking=str(uuid.uuid4())[:8].upper()
+                    code_tracking=tracking_code,
+                    client_email=client_email if client_email else None
                 )
                 db.add(commande)
                 imported += 1
+
+                if client_email:
+                    subject = f"Code de suivi - Commande {commande.id_commande}"
+                    html_content = notification_service.get_tracking_code_template(
+                        id_commande=commande.id_commande,
+                        tracking_code=tracking_code
+                    )
+                    emails_to_send.append((client_email, subject, html_content))
+
             except Exception as e:
                 errors.append(f"Row {index}: {str(e)}")
-        
+
         db.commit()
-        return {"success": True, "imported": imported, "errors": errors}
-    
+
+        # Send emails AFTER commit
+        for to_email, subject, html_content in emails_to_send:
+            await notification_service.send_email(to_email, subject, html_content)
+
+        return {
+            "success": True,
+            "imported": imported,
+            "emails_sent": len(emails_to_send),
+            "errors": errors
+        }
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/", response_model=list[CommandeResponse])
 async def list_commandes(

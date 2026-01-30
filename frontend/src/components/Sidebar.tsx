@@ -10,7 +10,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ role, activeTab, setActiveTab }: SidebarProps) {
-  const tabs = role === "admin" ? ["dashboard", "users", "reports"] : ["commandes", "itineraires", "livreurs"]
+  const tabs = role === "admin" ? ["dashboard", "users", "reports"] : ["dashboard","commandes", "itineraires", "livreurs"]
 
   const labels: Record<string, string> = {
     dashboard: "Tableau de bord",

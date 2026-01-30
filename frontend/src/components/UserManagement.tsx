@@ -1,4 +1,3 @@
-"use client"
 
 import type React from "react"
 
@@ -17,6 +16,7 @@ export default function UserManagement({ user }: UserManagementProps) {
   const [prenom, setPrenom] = useState("")
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("gestionnaire")
+  const [depot_id, setDepotId] = useState<number>(2)
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +36,7 @@ export default function UserManagement({ user }: UserManagementProps) {
           prenom,
           email,
           role,
-          depot_id: user.depot_id,
+          depot_id,
         },
         config,
       )
@@ -79,6 +79,16 @@ export default function UserManagement({ user }: UserManagementProps) {
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="gestionnaire">Gestionnaire</option>
             <option value="livreur">Livreur</option>
+          </select>
+        </div>
+        
+        <div className="form-group">
+          <label>depot id</label>
+          <select value={depot_id} onChange={(e) => setDepotId(Number(e.target.value))}>
+            <option value={1}>Paris</option>
+            <option value={2}>Rabat</option>
+            <option value={4}>Lyon</option>
+            <option value={3}>Versailles</option>
           </select>
         </div>
 

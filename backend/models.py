@@ -43,7 +43,6 @@ class User(Base):
     # Relationships
     depot = relationship("Depot", back_populates="users")
     livraisons = relationship("Livraison", back_populates="livreur")
-    commandes_creees = relationship("Commande", foreign_keys="Commande.client_id", back_populates="client")
 
 # ============= DEPOTS =============
 class Depot(Base):
@@ -73,7 +72,7 @@ class Commande(Base):
     poids = Column(Float)
     statut = Column(Enum(DeliveryStatus), default=DeliveryStatus.EN_ATTENTE)
     depot_id = Column(Integer, ForeignKey("depots.id"))
-    client_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    client_email = Column(String, nullable=True)
     date_creation = Column(DateTime, default=datetime.utcnow)
     date_modification = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     code_tracking = Column(String, unique=True, index=True)
@@ -81,7 +80,6 @@ class Commande(Base):
     
     # Relationships
     depot = relationship("Depot", back_populates="commandes")
-    client = relationship("User", foreign_keys=[client_id], back_populates="commandes_creees")
     livraison = relationship("Livraison", uselist=False, back_populates="commande")
     incidents = relationship("Incident", back_populates="commande")
 
