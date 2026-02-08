@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from "react"
 import axios from "axios"
 import type { User } from "../App"
@@ -12,6 +10,7 @@ interface Stats {
   total_commandes: number
   commandes_livrees: number
   commandes_en_attente: number
+  commandes_en_cours: number  // ✅ AJOUT
   livreurs_actifs: number
   taux_livraison: number
 }
@@ -54,12 +53,14 @@ export default function DashboardStats({ user }: DashboardStatsProps) {
     { name: "Ven", livraisons: stats.total_commandes * 0.25, livrees: stats.commandes_livrees * 0.32 },
   ]
 
+  // ✅ MODIFICATION - Ajout de "En cours"
   const pieData = [
-    { name: "Livrees", value: stats.commandes_livrees },
+    { name: "Livrées", value: stats.commandes_livrees },
+    { name: "En cours", value: stats.commandes_en_cours },
     { name: "En attente", value: stats.commandes_en_attente },
   ]
 
-  const COLORS = ["#e3e323", "#262541"]
+  const COLORS = ["#396a3a", "#935d0d", "#b30000"]  // ✅ Vert, Orange, Rouge
 
   return (
     <div className="dashboard-stats-container">
@@ -119,7 +120,16 @@ export default function DashboardStats({ user }: DashboardStatsProps) {
           <h3>Statut des Commandes</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name}: ${value}`} outerRadius={80} fill="#8884d8" dataKey="value">
+              <Pie 
+                data={pieData} 
+                cx="50%" 
+                cy="50%" 
+                labelLine={false} 
+                label={({ name, value }) => `${name}: ${value}`} 
+                outerRadius={80} 
+                fill="#8884d8" 
+                dataKey="value"
+              >
                 {pieData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}

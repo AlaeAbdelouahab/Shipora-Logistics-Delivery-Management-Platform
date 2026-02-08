@@ -85,9 +85,9 @@ export default function UserManagement({ user }: UserManagementProps) {
         <div className="form-group">
           <label>depot id</label>
           <select value={depot_id} onChange={(e) => setDepotId(Number(e.target.value))}>
-            <option value={1}>Paris</option>
-            <option value={2}>Rabat</option>
-            <option value={4}>Lyon</option>
+            <option value={1}>Rabat</option>
+            <option value={2}>CasaBlanca</option>
+            <option value={4}>Marrakech</option>
             <option value={3}>Versailles</option>
           </select>
         </div>

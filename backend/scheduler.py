@@ -34,7 +34,7 @@ class OptimizationScheduler:
 
         self.scheduler.add_job(
             self.daily_optimization,
-            CronTrigger(hour=22, minute=37, timezone=TIMEZONE),
+            CronTrigger(hour=21, minute=00, timezone=TIMEZONE),
             id="daily_optimization",
             name="Daily Route Optimization",
             replace_existing=True,
@@ -45,7 +45,7 @@ class OptimizationScheduler:
 
         if not self.scheduler.running:
             self.scheduler.start()
-            logger.info("✅ Optimization scheduler started - runs daily at 22:37")
+            logger.info("✅ Optimization scheduler started - runs daily at 21:00")
 
         # 🔍 Debug: show next run time
         job = self.scheduler.get_job("daily_optimization")

@@ -29,6 +29,13 @@ async def get_dashboard_stats(
         Commande.statut == DeliveryStatus.EN_ATTENTE
     ).count()
     
+    commandes_en_cours = db.query(Commande).filter(
+        Commande.depot_id == current_user.depot_id,
+        Commande.statut.in_([
+            DeliveryStatus.PREPARATION
+        ])
+    ).count()
+    
     livreurs_actifs = db.query(User).filter(
         User.depot_id == current_user.depot_id,
         User.role == UserRole.LIVREUR,
@@ -39,6 +46,7 @@ async def get_dashboard_stats(
         "total_commandes": commandes_total,
         "commandes_livrees": commandes_livrees,
         "commandes_en_attente": commandes_en_attente,
+        "commandes_en_cours": commandes_en_cours,  
         "livreurs_actifs": livreurs_actifs,
         "taux_livraison": (commandes_livrees / commandes_total * 100) if commandes_total > 0 else 0
     }
