@@ -263,41 +263,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Tech Stack Section */}
-      <section className="tech-stack-section">
-        <div className="section-container">
-          <h2>Construit avec la Technologie Moderne</h2>
-
-          <div className="tech-grid">
-            <div className="tech-card">
-              <h3>Backend</h3>
-              <ul>
-                <li>FastAPI (Python)</li>
-                <li>Base de données PostgreSQL</li>
-                <li>Authentification JWT</li>
-              </ul>
-            </div>
-
-            <div className="tech-card">
-              <h3>Frontend</h3>
-              <ul>
-                <li>React 18 & Vite</li>
-                <li>TypeScript</li>
-                <li>Mises à jour en temps réel</li>
-              </ul>
-            </div>
-
-            <div className="tech-card">
-              <h3>Optimisation</h3>
-              <ul>
-                <li>Google OR-Tools</li>
-                <li>Routage OSRM</li>
-                <li>Cartes Leaflet</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Contact Section */}
       <section id="contact" className="contact-section">
@@ -319,10 +284,6 @@ export default function Landing() {
               <a href="mailto:shipora.support@gmail.com">shipora.support@gmail.com</a>
             </div>
           </div>
-
-          <button onClick={() => navigate("/login")} className="btn-primary btn-lg">
-            Essai Gratuit
-          </button>
         </div>
       </section>
 
