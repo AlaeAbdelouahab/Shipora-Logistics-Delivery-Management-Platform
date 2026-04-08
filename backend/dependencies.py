@@ -32,6 +32,7 @@ async def get_current_user(
             detail="User not found"
         )
     
+    print(f"✅ USER TROUVÉ: {user.id}, ROLE: {user.role}")  # ⚠️ AJOUTEZ CECI
     return user
 
 def check_role(allowed_roles: List[UserRole]):

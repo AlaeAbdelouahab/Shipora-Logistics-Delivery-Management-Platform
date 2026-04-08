@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import type { User } from "../App"
 import "./Dashboard.css"
 import axios from "axios"
+import MapComponent from "../components/MapComponent"
 
 const API_URL = "http://localhost:8000/api"
 
@@ -9,51 +10,82 @@ interface DriverDashboardProps {
   user: User
 }
 
-interface Delivery {
-  id: number
+interface Commande {
   commande_id: number
+  livraison_id: number  // ✅ AJOUT
+  order: number
+  lat: number
+  lon: number
+  adresse: string
   statut: string
-  ordre_visite: number
+  poids: number
+  code_tracking: string
+}
+
+interface DepotDTO {
+  id: number
+  nom: string
+  lat: number
+  lon: number
+}
+
+interface ItineraireData {
+  id: number
   date_planifiee: string
+  distance_m: number
+  time_s: number
+  commandes_count: number
+}
+
+interface Route {
+  driver_id: number
+  commandes: Commande[]
 }
 
 export default function DriverDashboard({ user }: DriverDashboardProps) {
-  const [deliveries, setDeliveries] = useState<Delivery[]>([])
+  const [route, setRoute] = useState<Route | null>(null)
+  const [itineraire, setItineraire] = useState<ItineraireData | null>(null)
+  const [depot, setDepot] = useState<DepotDTO | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    fetchDeliveries()
+    fetchDashboard()
   }, [])
 
-  const fetchDeliveries = async () => {
+  const fetchDashboard = async () => {
     try {
-      const config = {
-        headers: { Authorization: `Bearer ${user.token}` },
+      const config = { headers: { Authorization: `Bearer ${user.token}` } }
+      
+      const res = await axios.get(`${API_URL}/itineraires/livreur-itineraire`, config)
+      
+      if (res.data.route && res.data.itineraire) {
+        setRoute(res.data.route)
+        setItineraire(res.data.itineraire)
+        setDepot(res.data.depot ?? null)
       }
-      const response = await axios.get(`${API_URL}/livraisons/`, config)
-      setDeliveries(response.data)
     } catch (err) {
-      setError("Erreur lors du chargement des livraisons")
+      if (axios.isAxiosError(err)) {
+        console.log("Erreur détaillée:", err.response?.data)
+      }
+      setError("Erreur lors du chargement du dashboard")
       console.error(err)
     } finally {
       setLoading(false)
     }
   }
 
-  const updateStatus = async (livraisonId: number, newStatus: string) => {
+  const updateStatus = async (livraisonId: number, newStatus: string) => {  
     try {
-      const config = {
-        headers: { Authorization: `Bearer ${user.token}` },
-      }
+      const config = { headers: { Authorization: `Bearer ${user.token}` } }
+      
       await axios.put(
-        `${API_URL}/livraisons/${livraisonId}`,
-        {
-          statut: newStatus,
-        },
-        config,
+        `${API_URL}/livraisons/${livraisonId}`, 
+        { statut: newStatus }, 
+        config
       )
-      fetchDeliveries()
+      
+      fetchDashboard() // Rafraîchir
     } catch (err) {
       setError("Erreur lors de la mise à jour")
       console.error(err)
@@ -82,48 +114,94 @@ export default function DriverDashboard({ user }: DriverDashboardProps) {
           {loading ? (
             <div style={{ textAlign: "center", padding: "40px" }}>Chargement...</div>
           ) : (
-            <div className="card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ordre</th>
-                    <th>Commande ID</th>
-                    <th>Adresse</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deliveries.length === 0 ? (
+            <>
+              {/* --- Détails de la route --- */}
+              {itineraire && (
+                <div className="route-details" style={{ marginBottom: "20px" }}>
+                  <div className="detail-row">
+                    <span className="label">Distance totale:</span>
+                    <span className="value">{(itineraire.distance_m / 1000).toFixed(2)} km</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Temps estimé:</span>
+                    <span className="value">{(itineraire.time_s / 3600).toFixed(2)} h</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Nombre de colis:</span>
+                    <span className="value">{itineraire.commandes_count}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* --- Map du trajet --- */}
+              {route && depot && (
+                <div style={{ marginBottom: "20px" }}>
+                  <MapComponent
+                    depot={depot}
+                    points={route.commandes
+                      .filter(c => c.lat && c.lon)
+                      .map(c => ({
+                        lat: c.lat,
+                        lon: c.lon,
+                        label: `Commande ${c.commande_id}`,
+                        order: c.order,
+                      }))}
+                    showRoute
+                  />
+                </div>
+              )}
+
+              {/* --- Tableau des livraisons --- */}
+              <div className="card">
+                <table>
+                  <thead>
                     <tr>
-                      <td colSpan={5} style={{ textAlign: "center" }}>
-                        Aucune livraison pour aujourd'hui
-                      </td>
+                      <th>Ordre</th>
+                      <th>Commande ID</th>
+                      <th>Adresse</th>
+                      <th>Statut</th>
+                      <th>Actions</th>
                     </tr>
-                  ) : (
-                    deliveries.map((delivery) => (
-                      <tr key={delivery.id}>
-                        <td>{delivery.ordre_visite || "-"}</td>
-                        <td>{delivery.commande_id}</td>
-                        <td>Adresse</td>
-                        <td>
-                          <span className={`badge badge-${delivery.statut.toLowerCase()}`}>{delivery.statut}</span>
-                        </td>
-                        <td>
-                          <button
-                            className="primary"
-                            onClick={() => updateStatus(delivery.id, "livree")}
-                            style={{ fontSize: "12px", padding: "6px 10px" }}
-                          >
-                            Marquer comme livré
-                          </button>
+                  </thead>
+                  <tbody>
+                    {!route || route.commandes.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: "center" }}>
+                          Aucune livraison pour aujourd'hui
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      route.commandes
+                        .sort((a, b) => a.order - b.order)
+                        .map((commande) => (
+                          <tr key={commande.commande_id}>
+                            <td>{commande.order}</td>
+                            <td>{commande.commande_id}</td>
+                            <td>{commande.adresse || "Adresse non disponible"}</td>
+                            <td>
+                              <span className={`badge badge-${(commande.statut || "en_attente").toLowerCase()}`}>
+                                {commande.statut || "En attente"}
+                              </span>
+                            </td>
+                            <td>
+                              {commande.livraison_id && (  // ✅ Vérifier que livraison_id existe
+                                <button
+                                  className="primary"
+                                  onClick={() => updateStatus(commande.livraison_id, "livree")}  // ✅ CHANGEMENT ICI
+                                  style={{ fontSize: "12px", padding: "6px 10px" }}
+                                  disabled={commande.statut === "livree"}
+                                >
+                                  {commande.statut === "livree" ? "Livré ✓" : "Marquer comme livré"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </main>

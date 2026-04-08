@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, Commande, Itineraire, DeliveryStatus, UserRole, Depot
+from models import User, Commande, Itineraire, DeliveryStatus, UserRole, Depot, Livraison
 from schemas import ItineraireResponse
 from dependencies import get_current_user, check_role
 from datetime import datetime, timedelta, date as date_cls
@@ -255,6 +255,102 @@ async def get_unscheduled_orders(
         for c in unscheduled
     ]
 
+@router.get("/livreur-itineraire")
+async def get_livreur_itineraire(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    now = datetime.now()
+    target = operational_target_date(now)
+
+    start = datetime(target.year, target.month, target.day)
+    end = start + timedelta(days=1)
+
+    # 🔒 UN SEUL itinéraire (le plus récent)
+    it = (
+        db.query(Itineraire)
+        .filter(Itineraire.depot_id == current_user.depot_id)
+        .filter(Itineraire.livreur_id == current_user.id)
+        .filter(Itineraire.date_planifiee >= start, Itineraire.date_planifiee < end)
+        .order_by(Itineraire.date_creation.desc())
+        .first()
+    )
+
+    if not it:
+        return {
+            "itineraire": None,
+            "route": None,
+            "depot": None,
+        }
+
+    # 🔹 depot
+    depot = db.query(Depot).filter(Depot.id == current_user.depot_id).first()
+
+    # 🔹 meta
+    meta = it.metadonnees or {}
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except Exception:
+            meta = {}
+
+    meta_commandes = meta.get("commandes", [])
+
+    commande_ids = [
+        c["commande_id"]
+        for c in meta_commandes
+        if isinstance(c, dict) and "commande_id" in c
+    ]
+
+    commandes_db = {}
+    if commande_ids:
+        rows = db.query(Commande).filter(Commande.id.in_(commande_ids)).all()
+        commandes_db = {c.id: c for c in rows}
+
+    commandes = []
+    for c in sorted(meta_commandes, key=lambda x: x.get("order", 999999)):
+        cdb = commandes_db.get(c["commande_id"])
+        
+        # ✅ Récupérer la livraison pour avoir son ID
+        livraison = db.query(Livraison).filter(
+            Livraison.commande_id == c["commande_id"],
+            Livraison.livreur_id == current_user.id
+        ).first()
+
+        commandes.append({
+            "commande_id": c["commande_id"],
+            "livraison_id": livraison.id if livraison else None,  # ✅ AJOUT
+            "order": c.get("order"),
+            "lat": cdb.latitude if cdb and cdb.latitude else c.get("lat"),
+            "lon": cdb.longitude if cdb and cdb.longitude else c.get("lon"),
+            "adresse": cdb.adresse if cdb else None,
+            "statut": cdb.statut.value if cdb and cdb.statut else None,
+            "poids": cdb.poids if cdb else None,
+            "code_tracking": cdb.code_tracking if cdb else None,
+        })
+
+    return {
+        "itineraire": {
+            "id": it.id,
+            "date_planifiee": it.date_planifiee.isoformat(),
+            "distance_m": int((it.distance_totale or 0) * 1000),
+            "time_s": int((it.temps_total or 0) * 60),
+            "commandes_count": it.commandes_count,
+            "optimise": it.optimise,
+            "created_at": it.date_creation.isoformat(),
+        },
+        "route": {
+            "driver_id": it.livreur_id,
+            "commandes": commandes,
+        },
+        "depot": {
+            "id": depot.id,
+            "nom": depot.nom,
+            "adresse": depot.adresse,
+            "lat": depot.latitude,
+            "lon": depot.longitude,
+        } if depot else None,
+    }
 
 @router.get("/{itineraire_id}", response_model=ItineraireResponse)
 async def get_itineraire(
@@ -262,6 +358,8 @@ async def get_itineraire(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    print("🔥 DÉBUT ENDPOINT") 
+    print(f"🔥 DÉBUT ENDPOINT - User: {current_user.id}, Role: {current_user.role}")
     itineraire = db.query(Itineraire).filter(Itineraire.id == itineraire_id).first()
     if not itineraire:
         raise HTTPException(status_code=404, detail="Itineraire not found")
@@ -270,3 +368,5 @@ async def get_itineraire(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return itineraire
+
+

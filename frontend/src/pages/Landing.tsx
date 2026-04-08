@@ -110,6 +110,11 @@ export default function Landing() {
             </div>
           </div>
 
+          {/* Image en arrière-plan */}
+          <div className="hero-image">
+            <img src={new URL("../images/image.png", import.meta.url).href} alt="Shipora Delivery" />
+          </div>
+
           <div className="hero-visual">
             <div className="visual-card">
               <div className="stat-item">
@@ -246,7 +251,6 @@ export default function Landing() {
                   "Optimisation des routes avec algorithme OR-Tools",
                   "Gestion des livreurs et capacités des véhicules",
                   "Suivi des incidents et métriques de qualité",
-                  "Génération de rapports complets",
                 ].map((item, idx) => (
                   <li key={idx}>
                     <CheckCircle className="w-5 h-5" />
@@ -259,41 +263,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Tech Stack Section */}
-      <section className="tech-stack-section">
-        <div className="section-container">
-          <h2>Construit avec la Technologie Moderne</h2>
-
-          <div className="tech-grid">
-            <div className="tech-card">
-              <h3>Backend</h3>
-              <ul>
-                <li>FastAPI (Python)</li>
-                <li>Base de données PostgreSQL</li>
-                <li>Authentification JWT</li>
-              </ul>
-            </div>
-
-            <div className="tech-card">
-              <h3>Frontend</h3>
-              <ul>
-                <li>React 18 & Vite</li>
-                <li>TypeScript</li>
-                <li>Mises à jour en temps réel</li>
-              </ul>
-            </div>
-
-            <div className="tech-card">
-              <h3>Optimisation</h3>
-              <ul>
-                <li>Google OR-Tools</li>
-                <li>Routage OSRM</li>
-                <li>Cartes Leaflet</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Contact Section */}
       <section id="contact" className="contact-section">
@@ -304,21 +273,17 @@ export default function Landing() {
           <div className="contact-grid">
             <div className="contact-card">
               <h3>Email</h3>
-              <a href="mailto:contact@shipora.com">contact@shipora.com</a>
+              <a href="mailto:shipora.team@gmail.com">shipora.team@gmail.com</a>
             </div>
             <div className="contact-card">
               <h3>Téléphone</h3>
-              <a href="tel:+1234567890">+1 (234) 567-890</a>
+              <a href="tel:+212718116731">+212 71811673</a>
             </div>
             <div className="contact-card">
               <h3>Support</h3>
-              <a href="mailto:support@shipora.com">support@shipora.com</a>
+              <a href="mailto:shipora.support@gmail.com">shipora.support@gmail.com</a>
             </div>
           </div>
-
-          <button onClick={() => navigate("/login")} className="btn-primary btn-lg">
-            Essai Gratuit
-          </button>
         </div>
       </section>
 
