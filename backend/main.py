@@ -1,12 +1,13 @@
+"""
+main.py : Backend app FastAPI
+"""
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-import os
-from database import init_db, engine, SessionLocal
-from routes import auth, users, commandes, livraisons, itineraires, reports, clients
 from dotenv import load_dotenv
+from database import init_db
+from routes import auth, users, commandes, livraisons, itineraires, reports, clients
 from scheduler import optimization_scheduler
 
 load_dotenv()
@@ -22,7 +23,9 @@ logger = logging.getLogger(__name__)
 # Lifespan event
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize database and scheduler
+    """
+    Startup: Initialize database and scheduler
+    """
     logger.info("Starting application...")
     init_db()
     optimization_scheduler.start()
